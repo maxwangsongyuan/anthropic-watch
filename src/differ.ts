@@ -24,8 +24,8 @@ export async function saveNewItems(
   db: D1Database,
   sourceKey: string,
   items: ParsedItem[]
-): Promise<number[]> {
-  const ids: number[] = [];
+): Promise<(number | null)[]> {
+  const ids: (number | null)[] = [];
   for (const item of items) {
     const result = await db
       .prepare(
@@ -33,9 +33,7 @@ export async function saveNewItems(
       )
       .bind(sourceKey, item.title, item.url ?? null)
       .run();
-    if (result.meta.last_row_id) {
-      ids.push(result.meta.last_row_id);
-    }
+    ids.push(result.meta.last_row_id || null);
   }
   return ids;
 }

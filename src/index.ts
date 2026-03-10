@@ -17,7 +17,8 @@ app.get("/check", async (c) => {
 });
 
 app.get("/recent", async (c) => {
-  const days = Number(c.req.query("days") ?? "7");
+  const raw = Number(c.req.query("days") ?? "7");
+  const days = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 365) : 7;
   const results = await c.env.DB.prepare(
     `SELECT ci.title, ci.url, ci.source_key, ci.discovered_at,
             s.summary, s.keywords_matched, s.relevance_score
@@ -34,6 +35,8 @@ app.get("/recent", async (c) => {
 async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] }> {
   const allNewItems: NewItemWithSummary[] = [];
   const errors: string[] = [];
+  const MAX_ARTICLE_FETCHES = 10;
+  let articleFetchCount = 0;
 
   for (const source of SOURCES) {
     try {
@@ -50,6 +53,14 @@ async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] 
 
       await logCheck(env.DB, source.key, parsed.length, newItems.length);
 
+      // Seed mode: first run with many items — save baseline, skip notifications
+      const isSeedRun = existing.size === 0 && newItems.length > 3;
+      if (isSeedRun) {
+        await saveNewItems(env.DB, source.key, newItems);
+        console.log(`[${source.key}] SEED: saved ${newItems.length} baseline items`);
+        continue;
+      }
+
       if (newItems.length > 0) {
         const ids = await saveNewItems(env.DB, source.key, newItems);
 
@@ -63,9 +74,12 @@ async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] 
 
           try {
             let articleText = item.title;
-            if (item.url) {
+            if (item.url && articleFetchCount < MAX_ARTICLE_FETCHES) {
+              articleFetchCount++;
               const fullPage = await fetchPage(item.url);
               articleText = fullPage
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
                 .replace(/<[^>]*>/g, " ")
                 .replace(/\s+/g, " ")
                 .trim()
@@ -74,8 +88,9 @@ async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] 
             const summary = await summarizeArticle(env, articleText);
             newItem.summary = summary;
 
-            if (ids[i]) {
-              await saveSummary(env.DB, ids[i], summary);
+            const itemId = ids[i];
+            if (itemId != null) {
+              await saveSummary(env.DB, itemId, summary);
             }
           } catch (err) {
             console.error(`Summary failed for "${item.title}":`, err);
@@ -90,7 +105,11 @@ async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] 
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${source.key}: ${msg}`);
       console.error(`[${source.key}] error:`, msg);
-      await logCheck(env.DB, source.key, 0, 0, msg);
+      try {
+        await logCheck(env.DB, source.key, 0, 0, msg);
+      } catch (logErr) {
+        console.error(`[${source.key}] logCheck also failed:`, logErr);
+      }
     }
   }
 

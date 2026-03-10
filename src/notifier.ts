@@ -75,4 +75,9 @@ export async function sendLarkNotification(
   if (!response.ok) {
     throw new Error(`Lark webhook failed: HTTP ${response.status}`);
   }
+
+  const body = (await response.json()) as { code?: number; msg?: string };
+  if (body.code !== undefined && body.code !== 0) {
+    throw new Error(`Lark webhook error: code=${body.code} msg=${body.msg}`);
+  }
 }
