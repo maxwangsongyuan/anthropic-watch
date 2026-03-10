@@ -1,0 +1,21 @@
+name = "anthropic-watch"
+main = "src/index.ts"
+compatibility_date = "2026-03-10"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["0 */6 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "anthropic-watch"
+database_id = "TBD"
+
+[ai]
+binding = "AI"
+
+[vars]
+INTEREST_KEYWORDS = "agents,skills,MCP,Claude Code,prompt engineering,tool use,context engineering,agentic coding,multi-agent,evaluation"
+
+[observability]
+enabled = true

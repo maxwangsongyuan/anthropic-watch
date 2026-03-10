@@ -1,0 +1,22 @@
+{
+  "name": "anthropic-watch",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.12.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.20",
+    "@cloudflare/workers-types": "^4.20260310.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.71.0"
+  }
+}
