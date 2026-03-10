@@ -9,7 +9,8 @@ crons = ["0 */6 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "anthropic-watch"
-database_id = "TBD"
+database_id = "7ed2a337-b59a-4cd1-ad08-45b2e42ec678"
+migrations_dir = "migrations"
 
 [ai]
 binding = "AI"
