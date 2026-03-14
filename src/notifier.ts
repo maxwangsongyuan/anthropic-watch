@@ -1,10 +1,29 @@
 import type { NewItemWithSummary } from "./types";
 
+async function signLark(
+  secret: string
+): Promise<{ timestamp: string; sign: string }> {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const stringToSign = `${timestamp}\n${secret}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(stringToSign),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new Uint8Array(0));
+  const sign = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  return { timestamp, sign };
+}
+
 interface LarkCard {
-  msg_type: string;
+  msg_type: "interactive";
   card: {
+    config: { wide_screen_mode: boolean };
     header: { title: { tag: string; content: string }; template: string };
-    elements: Array<{ tag: string; text?: { tag: string; content: string } }>;
+    elements: Array<{ tag: string; content?: string }>;
   };
 }
 
@@ -20,8 +39,8 @@ export function buildLarkCard(items: NewItemWithSummary[]): LarkCard {
 
   for (const [sourceName, sourceItems] of grouped) {
     elements.push({
-      tag: "div",
-      text: { tag: "lark_md", content: `**━━━ ${sourceName} ━━━**` },
+      tag: "markdown",
+      content: `**━━━ ${sourceName} ━━━**`,
     });
 
     for (const item of sourceItems) {
@@ -38,7 +57,7 @@ export function buildLarkCard(items: NewItemWithSummary[]): LarkCard {
       if (item.url) {
         content += `\n🔗 [Open](${item.url})`;
       }
-      elements.push({ tag: "div", text: { tag: "lark_md", content } });
+      elements.push({ tag: "markdown", content });
     }
 
     elements.push({ tag: "hr" });
@@ -47,6 +66,7 @@ export function buildLarkCard(items: NewItemWithSummary[]): LarkCard {
   return {
     msg_type: "interactive",
     card: {
+      config: { wide_screen_mode: true },
       header: {
         title: {
           tag: "plain_text",
@@ -61,15 +81,17 @@ export function buildLarkCard(items: NewItemWithSummary[]): LarkCard {
 
 export async function sendLarkNotification(
   webhookUrl: string,
+  webhookSecret: string,
   items: NewItemWithSummary[]
 ): Promise<void> {
   if (items.length === 0) return;
 
   const card = buildLarkCard(items);
+  const larkSign = await signLark(webhookSecret);
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(card),
+    body: JSON.stringify({ ...card, ...larkSign }),
   });
 
   if (!response.ok) {

@@ -115,7 +115,7 @@ async function runCheck(env: Env): Promise<{ newItems: number; errors: string[] 
 
   if (allNewItems.length > 0) {
     try {
-      await sendLarkNotification(env.LARK_WEBHOOK_URL, allNewItems);
+      await sendLarkNotification(env.LARK_WEBHOOK_URL, env.LARK_WEBHOOK_SECRET, allNewItems);
       console.log(`Notified: ${allNewItems.length} new items`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

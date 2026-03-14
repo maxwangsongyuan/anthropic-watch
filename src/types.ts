@@ -30,6 +30,7 @@ export interface Env {
   DB: D1Database;
   AI: Ai;
   LARK_WEBHOOK_URL: string;
+  LARK_WEBHOOK_SECRET: string;
   GOOGLE_CSE_API_KEY: string;
   GOOGLE_CSE_CX: string;
   INTEREST_KEYWORDS: string;
